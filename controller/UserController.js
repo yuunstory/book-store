@@ -1,6 +1,8 @@
 const conn = require("../mariadb");
 const { StatusCodes } = require("http-status-codes");
 const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+dotenv.config();
 
 const join = (req, res) => {
     const { email, password } = req.body;
@@ -20,7 +22,40 @@ const join = (req, res) => {
 };
 
 const login = (req, res) => {
-    res.json("로그인");
+    const { email, password } = req.body;
+
+    const sql = "SELECT * FROM users WHERE email = ?";
+    conn.query(sql, email, (err, results) => {
+        if (err) {
+            console.log(err);
+            return res.status(StatusCodes.BAD_REQUEST).end();
+        }
+
+        const loginUser = results[0];
+        if (loginUser && loginUser.password === password) {
+            const token = jwt.sign(
+                {
+                    email: loginUser.email,
+                },
+                process.env.PRIVATE_KEY,
+                {
+                    expiresIn: "5m",
+                    issuer: "jiwon",
+                }
+            );
+
+            res.cookie("token", token, { httpOnly: true });
+            console.log(token);
+            res.status(StatusCodes.OK).json({
+                message: `${loginUser.email}님 로그인되셨습니다.`,
+                token,
+            });
+        } else {
+            res.status(StatusCodes.UNAUTHORIZED).json({
+                message: "이메일 또는 비밀번호가 틀렸습니다.",
+            });
+        }
+    });
 };
 
 const passwordRequestReset = (req, res) => {

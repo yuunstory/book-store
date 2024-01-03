@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const { StatusCodes } = require("http-status-codes");
 const { join, login, passwordRequestReset, passwordReset } = require("../controller/UserController");
-
 const { body, validationResult } = require("express-validator");
 
 router.use(express.json());

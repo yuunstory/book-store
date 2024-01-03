@@ -24,7 +24,7 @@ const join = (req, res) => {
 const login = (req, res) => {
     const { email, password } = req.body;
 
-    const sql = "SELECT * FROM users WHERE email = ?";
+    const sql = "SELECT * FROM users WHERE email=?";
     conn.query(sql, email, (err, results) => {
         if (err) {
             console.log(err);
@@ -59,11 +59,42 @@ const login = (req, res) => {
 };
 
 const passwordRequestReset = (req, res) => {
-    res.json("비밀번호 초기화 요청");
+    const { email } = req.body;
+
+    const sql = "SELECT * FROM users WHERE email=?";
+    conn.query(sql, email, (err, results) => {
+        if (err) {
+            console.log(err);
+            return res.status(StatusCodes.BAD_REQUEST).end();
+        }
+
+        const isUser = results[0];
+        if (isUser) {
+            return res.status(StatusCodes.OK).json({
+                email: email,
+            });
+        } else {
+            return res.status(StatusCodes.UNAUTHORIZED).end();
+        }
+    });
 };
 
 const passwordReset = (req, res) => {
-    res.json("비밀번호 초기화");
+    const { email, password } = req.body;
+
+    const sql = "UPDATE users SET password=? WHERE email=?";
+    const values = [password, email];
+    conn.query(sql, values, (err, results) => {
+        if (err) {
+            return res.status(StatusCodes.BAD_REQUEST).end();
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(StatusCodes.BAD_REQUEST).end();
+        } else {
+            return res.status(StatusCodes.OK).json(results);
+        }
+    });
 };
 
 module.exports = { join, login, passwordRequestReset, passwordReset };

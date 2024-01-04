@@ -13,8 +13,6 @@ const join = (req, res) => {
     const salt = crypto.randomBytes(10).toString("base64");
     const hashPassword = crypto.pbkdf2Sync(password, salt, 10000, 10, "sha512").toString("base64");
 
-    // 로그인 시, 이메일 & 비밀번호(날 것) => salt값 꺼내서 비밀번호 암호화 해보고 => DB에 저장된 비밀번호와 비교
-
     const values = [email, hashPassword, salt];
     conn.query(sql, values, (err, results) => {
         if (err) {
@@ -39,7 +37,11 @@ const login = (req, res) => {
         }
 
         const loginUser = results[0];
-        if (loginUser && loginUser.password === password) {
+
+        // 로그인 시, 이메일 & 비밀번호(날 것) => salt값 꺼내서 비밀번호 암호화 해보고
+        const hashPassword = crypto.pbkdf2Sync(password, loginUser.salt, 10000, 10, "sha512").toString("base64");
+        //=> DB에 저장된 비밀번호와 비교
+        if (loginUser && loginUser.password === hashPassword) {
             const token = jwt.sign(
                 {
                     email: loginUser.email,
@@ -56,6 +58,7 @@ const login = (req, res) => {
             res.status(StatusCodes.OK).json({
                 message: `${loginUser.email}님 로그인되셨습니다.`,
                 token,
+                results,
             });
         } else {
             res.status(StatusCodes.UNAUTHORIZED).json({
@@ -93,6 +96,7 @@ const passwordReset = (req, res) => {
     const values = [password, email];
     conn.query(sql, values, (err, results) => {
         if (err) {
+            console.log(err);
             return res.status(StatusCodes.BAD_REQUEST).end();
         }
 

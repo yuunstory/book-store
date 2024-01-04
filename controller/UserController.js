@@ -92,8 +92,11 @@ const passwordRequestReset = (req, res) => {
 const passwordReset = (req, res) => {
     const { email, password } = req.body;
 
-    const sql = "UPDATE users SET password=? WHERE email=?";
-    const values = [password, email];
+    const salt = crypto.randomBytes(10).toString("base64");
+    const hashPassword = crypto.pbkdf2Sync(password, salt, 10000, 10, "sha512").toString("base64");
+
+    const sql = "UPDATE users SET password=?, salt=? WHERE email=?";
+    const values = [hashPassword, salt, email];
     conn.query(sql, values, (err, results) => {
         if (err) {
             console.log(err);

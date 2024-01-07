@@ -3,22 +3,23 @@ const { StatusCodes } = require("http-status-codes");
 
 // (카테고리별, 신간 여부별) 전체 도서 조회
 const getAllBooks = (req, res) => {
-    const { categoryId, newBook } = req.query;
+    let { categoryId, newBook, limit, currentPage } = req.query;
+    const offset = (currentPage - 1) * limit;
 
     let sql = "SELECT * FROM books";
     let values = [];
-
     if (categoryId && newBook) {
         sql += " WHERE category_id = ? AND pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 3 MONTH) AND NOW()";
-        values = [categoryId, newBook];
+        values = [categoryId];
     } else if (categoryId) {
         sql += " WHERE category_id = ?";
         values = [categoryId];
     } else if (newBook) {
         sql += " WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()";
-        values = [newBook];
     }
 
+    sql += " LIMIT ? OFFSET ?";
+    values = [...values, parseInt(limit), offset];
     conn.query(sql, values, (err, results) => {
         if (err) {
             console.log(err);

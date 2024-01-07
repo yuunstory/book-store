@@ -7,6 +7,7 @@ const connection = mariadb.createConnection({
     user: "root",
     password: process.env.DB_PASSWORD,
     database: "Bookstore",
+    dateStrings: true,
 });
 
 module.exports = connection;

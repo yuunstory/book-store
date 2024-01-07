@@ -37,7 +37,9 @@ const getBookById = (req, res) => {
     let { id } = req.params;
     id = parseInt(id);
 
-    const sql = "SELECT * FROM books WHERE id=?";
+    const sql = `SELECT * FROM books LEFT JOIN category 
+                ON books.category_id = category.id 
+                WHERE books.id = ?;`;
     conn.query(sql, id, (err, results) => {
         if (err) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -52,7 +54,5 @@ const getBookById = (req, res) => {
         }
     });
 };
-
-//카테고리별 도서 조회
 
 module.exports = { getAllBooks, getBookById };

@@ -1,6 +1,6 @@
 
 package-lock.json
-data.sql
+*.sql
 
 ### Node ###
 # Logs

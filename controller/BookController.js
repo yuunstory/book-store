@@ -6,7 +6,9 @@ const getAllBooks = (req, res) => {
     let { categoryId, newBook, limit, currentPage } = req.query;
     const offset = (currentPage - 1) * limit;
 
-    let sql = "SELECT * FROM books";
+    let sql = `SELECT *,
+                (SELECT count(*) FROM likes WHERE books.id = liked_book_id) AS likes
+            FROM books`;
     let values = [];
     if (categoryId && newBook) {
         sql += " WHERE category_id = ? AND pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 3 MONTH) AND NOW()";
@@ -20,6 +22,7 @@ const getAllBooks = (req, res) => {
 
     sql += " LIMIT ? OFFSET ?";
     values = [...values, parseInt(limit), offset];
+
     conn.query(sql, values, (err, results) => {
         if (err) {
             console.log(err);
@@ -36,14 +39,21 @@ const getAllBooks = (req, res) => {
 
 // 개별 도서 조회
 const getBookById = (req, res) => {
-    let { id } = req.params;
-    id = parseInt(id);
+    const { userId } = req.body;
+    const bookId = req.params.id;
 
-    const sql = `SELECT * FROM books LEFT JOIN category 
-                ON books.category_id = category.id 
-                WHERE books.id = ?;`;
-    conn.query(sql, id, (err, results) => {
+    const sql = `SELECT * , 
+                    (SELECT count(*) FROM likes WHERE books.id = liked_book_id) AS likes, 
+                    (SELECT EXISTS (SELECT * FROM likes WHERE user_id = ? AND liked_book_id = ?)) AS liked 
+                FROM books 
+                LEFT JOIN category 
+                ON books.category_id = category.category_id  
+                WHERE books.id =?`;
+    const values = [userId, bookId, bookId];
+
+    conn.query(sql, values, (err, results) => {
         if (err) {
+            console.log(err);
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: "존재하지 않는 도서입니다.",
             });

@@ -7,9 +7,8 @@ dotenv.config();
 
 /** 회원가입 */
 const join = async (req, res) => {
-  let connection;
+  const connection = await getConnection();
   try {
-    connection = await getConnection();
     const { email, password } = req.body;
 
     // 이메일 중복 체크
@@ -47,9 +46,8 @@ const join = async (req, res) => {
 
 /**  로그인 */
 const login = async (req, res) => {
-  let connection;
+  const connection = await getConnection();
   try {
-    connection = await getConnection();
     const { email, password } = req.body;
     const sql = "SELECT * FROM users WHERE email=?";
     const [user] = await connection.query(sql, email);
@@ -93,9 +91,8 @@ const login = async (req, res) => {
 
 /**  비밀번호 수정 요청 */
 const passwordRequestReset = async (req, res) => {
-  let connection;
+  const connection = await getConnection();
   try {
-    connection = await getConnection();
     const { email } = req.body;
     const sql = "SELECT * FROM users WHERE email=?";
     const [results] = await connection.query(sql, email);
@@ -122,9 +119,8 @@ const passwordRequestReset = async (req, res) => {
 
 /** 비밀번호 수정 */
 const passwordReset = async (req, res) => {
-  let connection;
+  const connection = await getConnection();
   try {
-    connection = await getConnection();
     const { email, password } = req.body;
 
     const salt = crypto.randomBytes(10).toString("base64");

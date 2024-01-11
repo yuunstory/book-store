@@ -78,12 +78,35 @@ const listCartItems = async (req, res) => {
 };
 
 /** 장바구니에서 아이템 삭제 */
-const removeFromCart = (req, res) => {
-  res.status(200).json("장바구니 삭제");
+const removeItemFromCart = async (req, res) => {
+  let connection;
+  try {
+    connection = await getConnection();
+    const { id } = req.params; //cartItemId
+
+    const sql = "DELETE FROM cartItems WHERE id = ?";
+    const [result] = await connection.query(sql, id);
+
+    if (result.affectedRows === 0) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: "삭제할 아이템이 없습니다.",
+      });
+    }
+    return res.status(StatusCodes.OK).send("삭제 완료");
+  } catch (err) {
+    console.error(err);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "장바구니 아이템 삭제 중 오류 발생",
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 /** 장바구니에서 선택한 아이템 */
 const getSelectedCartItems = (req, res) => {
   res.status(200).json("장바구니에서 선택한 상품");
 };
-module.exports = { addToCart, removeFromCart, listCartItems, getSelectedCartItems };
+module.exports = { addToCart, removeItemFromCart, listCartItems, getSelectedCartItems };

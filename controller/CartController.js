@@ -26,7 +26,7 @@ const addToCart = async (req, res) => {
       sql = "UPDATE cartItems set quantity = quantity + 1 WHERE book_id = ? AND user_id = ?";
     } else {
       // 장바구니에 존재하지 않는 경우, 새로 추가
-      sql = "INSERT INTO cartItems (book_id, quantity, user_id) VALUES (?, ?, ?);";
+      sql = "INSERT INTO cartItems (id, book_id, quantity, user_id) VALUES ( ?, ?, ?);";
       values = [bookId, quantity, userId];
     }
 
@@ -45,8 +45,36 @@ const addToCart = async (req, res) => {
 };
 
 /** 장바구니 아이템 목록 조회 */
+/*
+로그인한 유저의 장바구니 목록만 보여준다.
+*/
 const listCartItems = async (req, res) => {
-  res.status(200).json("장바구니 아이템 목록 조회");
+  const connection = await getConnection();
+  try {
+    const { userId } = req.body;
+    const sql = `SELECT cartItems.id, book_id, title, summary,quantity, price 
+                FROM cartItems LEFT JOIN books 
+                ON cartItems.book_id = books.id 
+                WHERE user_id = ? `;
+    const [results] = await connection.query(sql, userId);
+
+    if (results > 0) {
+      // 장바구니에 아이템이 담겨있으면
+      return res.status(StatusCodes.OK).json(results);
+    } else {
+      // 장바구니가 비었으면
+      return res.status(StatusCodes.NOT_FOUND).send("장바구니가 비었습니다.");
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "장바구니 목록 조회 중 오류 발생",
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 /** 장바구니에서 아이템 삭제 */

@@ -15,7 +15,8 @@ const addToCart = async (req, res) => {
     connection = await getConnection();
     const { bookId, quantity, userId } = req.body; //userId는 임시로 body통해 받아옴
 
-    const checkCartSql = "SELECT * FROM cartItems WHERE book_id = ? AND user_id = ?";
+    //장바구니에 같은 아이템 있는지 확인
+    const checkCartSql = "SELECT * FROM cartItems WHERE book_id = :bookId AND user_id = :userId";
     let values = { bookId: bookId, userId: userId };
     const [existingItemInCart] = await connection.query(checkCartSql, values);
 

@@ -3,9 +3,7 @@ const { StatusCodes } = require("http-status-codes");
 
 /** 장바구니 담기 */
 /*
-로그인 여부는 jwt로 확인
-로그인 한 유저가 아니라면 -> 로그인 화면으로 넘어간다
-로그인 한 유저라면 -> bookId, quantity를 받아와 DB에 저장
+bookId, quantity를 받아와 DB에 저장
 같은 유저가 같은 책을 장바구니 담기 하면 quantity +1
 */
 const addToCart = async (req, res) => {
@@ -50,12 +48,12 @@ const listCartItems = async (req, res) => {
   const connection = await getConnection();
   try {
     let { userId, selected } = req.body;
-    const values = { userId: userId, selected: selected };
 
     const sql = `SELECT cartItems.id, book_id, title, summary,quantity, price 
                 FROM cartItems LEFT JOIN books 
                 ON cartItems.book_id = books.id 
                 WHERE user_id = :userId AND cartItems.id IN (:selected)`;
+    const values = { userId: userId, selected: selected };
     const [results] = await connection.query(sql, values);
     console.log(results);
 

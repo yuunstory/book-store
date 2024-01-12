@@ -1,4 +1,3 @@
-const conn = require("../mariadb");
 const { getConnection } = require("../mariadb");
 const { StatusCodes } = require("http-status-codes");
 
@@ -17,17 +16,17 @@ const addToCart = async (req, res) => {
     const { bookId, quantity, userId } = req.body; //userId는 임시로 body통해 받아옴
 
     const checkCartSql = "SELECT * FROM cartItems WHERE book_id = ? AND user_id = ?";
-    let values = [bookId, userId];
+    let values = { bookId: bookId, userId: userId };
     const [existingItemInCart] = await connection.query(checkCartSql, values);
 
     let sql;
     if (existingItemInCart.length > 0) {
       // 장바구니에 이미 존재하는 경우, 수량 업데이트
-      sql = "UPDATE cartItems set quantity = quantity + 1 WHERE book_id = ? AND user_id = ?";
+      sql = "UPDATE cartItems set quantity = quantity + 1 WHERE book_id = :bookId AND user_id = :userId";
     } else {
       // 장바구니에 존재하지 않는 경우, 새로 추가
-      sql = "INSERT INTO cartItems (id, book_id, quantity, user_id) VALUES ( ?, ?, ?);";
-      values = [bookId, quantity, userId];
+      sql = "INSERT INTO cartItems (book_id, quantity, user_id) VALUES (:bookId, :quantity, :userId);";
+      values.quantity = quantity;
     }
 
     await connection.query(sql, values);
@@ -44,21 +43,22 @@ const addToCart = async (req, res) => {
   }
 };
 
-/** 장바구니 아이템 목록 조회 */
-/*
-로그인한 유저의 장바구니 목록만 보여준다.
-*/
+/** 장바구니 아이템 목록 조회 / 선택한 장바구니 아이템 목록 조회 */
+//로그인한 유저의 장바구니 목록만 보여준다.
 const listCartItems = async (req, res) => {
   const connection = await getConnection();
   try {
-    const { userId } = req.body;
+    let { userId, selected } = req.body;
+    const values = { userId: userId, selected: selected };
+
     const sql = `SELECT cartItems.id, book_id, title, summary,quantity, price 
                 FROM cartItems LEFT JOIN books 
                 ON cartItems.book_id = books.id 
-                WHERE user_id = ? `;
-    const [results] = await connection.query(sql, userId);
+                WHERE user_id = :userId AND cartItems.id IN (:selected)`;
+    const [results] = await connection.query(sql, values);
+    console.log(results);
 
-    if (results > 0) {
+    if (results.length > 0) {
       // 장바구니에 아이템이 담겨있으면
       return res.status(StatusCodes.OK).json(results);
     } else {
@@ -84,7 +84,7 @@ const removeItemFromCart = async (req, res) => {
     connection = await getConnection();
     const { id } = req.params; //cartItemId
 
-    const sql = "DELETE FROM cartItems WHERE id = ?";
+    const sql = "DELETE FROM cartItems WHERE id = :id";
     const [result] = await connection.query(sql, id);
 
     if (result.affectedRows === 0) {
@@ -105,8 +105,4 @@ const removeItemFromCart = async (req, res) => {
   }
 };
 
-/** 장바구니에서 선택한 아이템 */
-const getSelectedCartItems = (req, res) => {
-  res.status(200).json("장바구니에서 선택한 상품");
-};
-module.exports = { addToCart, removeItemFromCart, listCartItems, getSelectedCartItems };
+module.exports = { addToCart, removeItemFromCart, listCartItems };

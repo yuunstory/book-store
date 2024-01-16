@@ -14,14 +14,4 @@ const pool = mariadb.createPool({
   namedPlaceholders: true,
 });
 
-const getConnection = async () => {
-  try {
-    const connection = await pool.getConnection();
-    return connection;
-  } catch (err) {
-    console.error("Database Connection Error: ", err);
-    throw err; // 오류를 다시 던져 상위 스코프에서 처리할 수 있도록 함
-  }
-};
-
-module.exports = { getConnection };
+module.exports = pool;

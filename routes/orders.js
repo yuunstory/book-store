@@ -3,7 +3,7 @@ const { order, getOrders, getOrderDetail } = require("../controller/OrderControl
 const router = express.Router();
 
 router.post("/", order);
-router.get("/:orderId", getOrders);
+router.get("/", getOrders);
 router.get("/:id", getOrderDetail);
 
 module.exports = router;

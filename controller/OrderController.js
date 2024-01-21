@@ -74,12 +74,24 @@ const getOrders = async (req, res) => {
     try {
         const connection = await pool.getConnection();
 
-        const sql = `SELECT orders.id, created_at, address, receiver, contact, book_title, total_quantity, total_price 
-        FROM orders LEFT JOIN delivery 
-        ON orders.delivery_id = delivery.id`;
-        const [rows, fields] = await connection.query(sql);
+        const authorization = checkAuthorization(req, res);
 
-        return res.status(StatusCodes.OK).json(rows);
+        if (authorization instanceof jwt.TokenExpiredError) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: "로그인 토큰이 만료되었습니다. 다시 로그인하세요.",
+            });
+        } else if (authorization instanceof jwt.JsonWebTokenError) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                message: "잘못된 토큰입니다.",
+            });
+        } else {
+            const sql = `SELECT orders.id, created_at, address, receiver, contact, book_title, total_quantity, total_price 
+      FROM orders LEFT JOIN delivery 
+      ON orders.delivery_id = delivery.id`;
+            const [rows, fields] = await connection.query(sql);
+
+            return res.status(StatusCodes.OK).json(rows);
+        }
     } catch (err) {
         console.log(err);
         return res.statsu(StatusCodes.BAD_REQUEST).end();
@@ -91,14 +103,25 @@ const getOrderDetail = async (req, res) => {
     try {
         const connection = await pool.getConnection();
         const { id } = req.params;
+        const authorization = checkAuthorization(req, res);
 
-        const sql = `SELECT book_id, title AS book_title, author, price, quantity
-    FROM orderedBook LEFT JOIN books 
-    ON orderedBook.book_id = books.id
-    WHERE order_id = :id`;
-        const [rows, fields] = await connection.query(sql, { id: id });
+        if (authorization instanceof jwt.TokenExpiredError) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: "로그인 토큰이 만료되었습니다. 다시 로그인하세요.",
+            });
+        } else if (authorization instanceof jwt.JsonWebTokenError) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                message: "잘못된 토큰입니다.",
+            });
+        } else {
+            const sql = `SELECT book_id, title AS book_title, author, price, quantity
+          FROM orderedBook LEFT JOIN books 
+          ON orderedBook.book_id = books.id
+          WHERE order_id = :id`;
+            const [rows, fields] = await connection.query(sql, { id: id });
 
-        return res.status(StatusCodes.OK).json(rows);
+            return res.status(StatusCodes.OK).json(rows);
+        }
     } catch (err) {
         console.log(err);
         return res.statsu(StatusCodes.BAD_REQUEST).end();

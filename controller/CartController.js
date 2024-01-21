@@ -78,15 +78,27 @@ const removeItemFromCart = async (req, res) => {
         const connection = await pool.getConnection();
         const cartItemId = req.params.id;
 
-        const sql = "DELETE FROM cartItems WHERE id = :id";
-        const [result] = await connection.query(sql, { id: cartItemId });
+        const authorization = checkAuthorization(req, res);
 
-        if (result.affectedRows === 0) {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                message: "삭제할 아이템이 없습니다.",
+        if (authorization instanceof jwt.TokenExpiredError) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: "로그인 토큰이 만료되었습니다. 다시 로그인하세요.",
             });
+        } else if (authorization instanceof jwt.JsonWebTokenError) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                message: "잘못된 토큰입니다.",
+            });
+        } else {
+            const sql = "DELETE FROM cartItems WHERE id = :id";
+            const [result] = await connection.query(sql, { id: cartItemId });
+
+            if (result.affectedRows === 0) {
+                return res.status(StatusCodes.NOT_FOUND).json({
+                    message: "삭제할 아이템이 없습니다.",
+                });
+            }
+            return res.status(StatusCodes.OK).send("삭제 완료");
         }
-        return res.status(StatusCodes.OK).send("삭제 완료");
     } catch (err) {
         console.error(err);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({

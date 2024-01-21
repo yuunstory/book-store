@@ -6,35 +6,49 @@ const { StatusCodes } = require("http-status-codes");
 /** (카테고리별, 신간 여부별) 전체 도서 조회  */
 const getAllBooks = async (req, res) => {
     try {
+        let allBooksRes = {};
         const connection = await pool.getConnection();
         let { categoryId, newBook, limit, currentPage } = req.query;
 
         const offset = (currentPage - 1) * limit;
 
-        let sql = `SELECT *,
+        let findBooksSql = `SELECT SQL_CALC_FOUND_ROWS *,
                   (SELECT count(*) FROM likes WHERE books.id = liked_book_id) AS likes
-              FROM books`;
-        let values;
+                  FROM books`;
+        let values = {};
 
         if (categoryId) {
-            sql += " WHERE category_id = :categoryId";
+            findBooksSql += " WHERE category_id = :categoryId";
             values = { categoryId: categoryId };
         }
         if (newBook) {
-            sql += " WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()";
+            findBooksSql += " WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()";
         }
 
-        sql += " LIMIT :limit OFFSET :offset";
-        values[limit] = parseInt(limit);
-        values[offset] = offset;
+        findBooksSql += " LIMIT :limit OFFSET :offset";
+        values.limit = parseInt(limit);
+        values.offset = offset;
 
-        const [results] = await connection.query(sql, values);
+        let [results] = await connection.query(findBooksSql, values);
+        console.log(results);
 
         if (results.length) {
-            return res.status(StatusCodes.OK).json(results);
+            allBooksRes.books = results;
         } else {
-            return res.status(StatusCodes.NOT_FOUND).end();
+            return res.status(StatusCodes.NOT_FOUND).send("전체 도서 조회 중 오류");
         }
+
+        const allBooksCountSql = "SELECT found_rows()";
+
+        const [totalCount] = await connection.query(allBooksCountSql, values);
+
+        const pagination = {};
+        pagination.currentPage = parseInt(currentPage);
+        pagination.totalBooksCount = totalCount[0]["found_rows()"];
+
+        allBooksRes.pagination = pagination;
+
+        return res.status(StatusCodes.OK).json(allBooksRes);
     } catch (err) {
         console.log(err);
     }

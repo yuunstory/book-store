@@ -1,35 +1,47 @@
-const pool = require("../mariadb");
 const { StatusCodes } = require("http-status-codes");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto"); //암호화
+const { checkEmailDuplicate, createUser, getUser, updateUserPassword } = require("../models/user");
+
+const hashPassword = ({ password, salt = null }) => {
+    try {
+        if (!salt) {
+            salt = crypto.randomBytes(16).toString("base64"); // 새로운 salt 생성
+        }
+        const hashedPw = crypto.pbkdf2Sync(password, salt, 10000, 10, "sha512").toString("base64");
+        return { salt, hashedPw };
+    } catch (err) {
+        console.log(err);
+        throw new Error("비밀번호 암호화 중 오류");
+    }
+};
 
 /** 회원가입 */
 const join = async (req, res) => {
     try {
-        const connection = await pool.getConnection();
-
         const { email, name, password } = req.body;
+
         // 이메일 중복 체크
-        const checkEmailSql = "SELECT email FROM users WHERE email = ?";
-        const [existingUser] = await connection.query(checkEmailSql, [email]);
-        if (existingUser.length > 0) {
+        const isDuplicate = await checkEmailDuplicate(email);
+        if (isDuplicate.length > 0) {
             return res.status(StatusCodes.CONFLICT).json({
                 message: "이미 존재하는 이메일입니다.",
             });
         }
 
         // 비밀번호 해싱
-        const salt = crypto.randomBytes(16).toString("base64"); // 더 긴 salt 사용
-        const hashedPassword = crypto.pbkdf2Sync(password, salt, 10000, 10, "sha512").toString("base64");
-        // const hashedPW = await bcrypt.hash(password, 12);
+        const { salt, hashedPw } = hashPassword({ password });
 
-        // 사용자 정보 저장
-        const sql = "INSERT INTO users (email, name, password, salt) VALUES(:email, :name, :hashedPW, :salt)";
-        await connection.query(sql, { email: email, name: name, hashedPW: hashedPassword, salt: salt });
+        // 회원 등록
+        const insertedUserData = await createUser({ email, name, hashedPw, salt });
 
-        res.status(StatusCodes.CREATED).json({
-            message: "회원가입 성공",
-        });
+        if (insertedUserData.affectedRows) {
+            res.status(StatusCodes.CREATED).json({
+                message: "회원가입 성공",
+            });
+        } else {
+            res.status(StatusCodes.BAD_REQUEST).send("회원가입 실패");
+        }
     } catch (err) {
         console.error(err);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
@@ -41,24 +53,24 @@ const join = async (req, res) => {
 /**  로그인 */
 const login = async (req, res) => {
     try {
-        const connection = await pool.getConnection();
-
         const { email, password } = req.body;
-        const sql = "SELECT * FROM users WHERE email= :email";
-        const [results] = await connection.query(sql, { email: email });
 
-        const loginUser = results[0];
+        // 사용자 조회
+        const loginUser = await getUser(email);
         if (!loginUser) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 message: "사용자를 찾을 수 없습니다.",
             });
         }
+
         // 로그인 시, 이메일 & 비밀번호(날 것) => salt값 꺼내서 비밀번호 암호화 해보고
-        const hashedPassword = crypto.pbkdf2Sync(password, loginUser.salt, 10000, 10, "sha512").toString("base64");
-        //=> DB에 저장된 비밀번호와 비교
-        if (loginUser.password === hashedPassword) {
+        const salt = loginUser.salt;
+        const { hashedPw } = hashPassword({ salt, password });
+
+        // DB에 저장된 비밀번호와 비교
+        if (loginUser.password === hashedPw) {
             const token = jwt.sign({ id: loginUser.id, email: loginUser.email }, process.env.PRIVATE_KEY, {
-                expiresIn: "3m",
+                expiresIn: "5m",
                 issuer: "jiwon",
             });
 
@@ -83,12 +95,10 @@ const login = async (req, res) => {
 /**  비밀번호 수정 요청 */
 const passwordRequestReset = async (req, res) => {
     try {
-        const connection = await pool.getConnection();
         const { email } = req.body;
-        const sql = "SELECT * FROM users WHERE email= :email";
-        const [results] = await connection.query(sql, { email: email });
 
-        const user = results[0];
+        // 사용자 조회
+        const user = await getUser(email);
         if (!user) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: "해당 이메일을 가진 사용자를 찾을 수 없습니다.",
@@ -107,24 +117,21 @@ const passwordRequestReset = async (req, res) => {
 /** 비밀번호 수정 */
 const passwordReset = async (req, res) => {
     try {
-        const connection = await pool.getConnection();
-
         const { email, password } = req.body;
 
-        const salt = crypto.randomBytes(10).toString("base64");
-        const hashedPassword = crypto.pbkdf2Sync(password, salt, 10000, 10, "sha512").toString("base64");
+        const { salt, hashedPw } = hashPassword({ password });
 
-        const sql = "UPDATE users SET password= :hashedPW, salt= :salt WHERE email= :email";
-        const [result] = await connection.query(sql, { hashedPW: hashedPassword, salt: salt, email: email });
+        const passwordUpdated = await updateUserPassword({ email, hashedPw, salt });
 
-        if (result.affectedRows === 0) {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                message: "해당 이메일을 가진 사용자를 찾을 수 없습니다.",
+        if (passwordUpdated) {
+            res.status(StatusCodes.OK).json({
+                message: "비밀번호가 성공적으로 변경되었습니다.",
+            });
+        } else {
+            res.status(StatusCodes.NOT_FOUND).json({
+                message: "사용자를 찾을 수 없습니다.",
             });
         }
-        res.status(StatusCodes.OK).json({
-            message: "비밀번호가 성공적으로 변경되었습니다.",
-        });
     } catch (err) {
         console.error(err);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({

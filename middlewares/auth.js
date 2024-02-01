@@ -3,13 +3,13 @@ const jwt = require("jsonwebtoken");
 const checkAuthorization = (req, res) => {
     try {
         const receivedJwt = req.headers["authorization"];
-        console.log(`receivedJwt : ${receivedJwt}`);
+        // console.log(`receivedJwt : ${receivedJwt}`);
 
         if (receivedJwt) {
             const decodedPayload = jwt.verify(receivedJwt, process.env.PRIVATE_KEY);
             return decodedPayload;
         } else {
-            throw new ReferenceError("jwt must be provied");
+            return null;
         }
     } catch (err) {
         console.log(err.name);

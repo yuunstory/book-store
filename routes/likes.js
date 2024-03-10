@@ -1,9 +1,10 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { addLike, removeLike } = require("../controller/LikeController");
+const { addLike, removeLike } = require('../controller/LikeController');
+const checkAuthorization = require('../middlewares/auth');
 
-router.post("/:id", addLike);
+router.post('/:id', checkAuthorization(), addLike);
 
-router.delete("/:id", removeLike);
+router.delete('/:id', checkAuthorization(), removeLike);
 
 module.exports = router;

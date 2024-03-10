@@ -1,7 +1,7 @@
 const checkAuthorization = require('../middlewares/auth');
 const orderModel = require('../models/order');
 const jwt = require('jsonwebtoken');
-const asyncHandler = require('express-async-handler');
+
 const { StatusCodes } = require('http-status-codes');
 
 /** 주문하기 */
@@ -10,24 +10,6 @@ const placeOrder = async (req, res) => {
     // console.log(items);
 
     const authorization = checkAuthorization(req, res);
-
-    if (authorization instanceof jwt.TokenExpiredError) {
-        return res.status(StatusCodes.UNAUTHORIZED).json({
-            message: '로그인 토큰이 만료되었습니다. 다시 로그인하세요.',
-        });
-    }
-
-    if (authorization instanceof jwt.JsonWebTokenError) {
-        return res.status(StatusCodes.BAD_REQUEST).json({
-            message: '잘못된 토큰입니다.',
-        });
-    }
-
-    if (authorization == null) {
-        return res.status(StatusCodes.UNAUTHORIZED).json({
-            message: '로그인이 필요합니다.',
-        });
-    }
 
     const orderSuccess = await orderModel.placeOrder(
         items,
@@ -52,24 +34,6 @@ const getOrderList = async (req, res) => {
     try {
         const authorization = checkAuthorization(req, res);
 
-        if (authorization instanceof jwt.TokenExpiredError) {
-            return res.status(StatusCodes.UNAUTHORIZED).json({
-                message: '로그인 토큰이 만료되었습니다. 다시 로그인하세요.',
-            });
-        }
-
-        if (authorization instanceof jwt.JsonWebTokenError) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
-                message: '잘못된 토큰입니다.',
-            });
-        }
-
-        if (authorization == null) {
-            return res.status(StatusCodes.UNAUTHORIZED).json({
-                message: '로그인이 필요합니다.',
-            });
-        }
-
         const rows = await orderModel.getOrderList(authorization);
         return res.status(StatusCodes.OK).json(rows);
     } catch (err) {
@@ -82,19 +46,7 @@ const getOrderList = async (req, res) => {
 const getOrderDetail = async (req, res) => {
     const { id } = req.params;
     try {
-        const authorization = checkAuthorization(req, res);
-
-        if (authorization instanceof jwt.TokenExpiredError) {
-            return res.status(StatusCodes.UNAUTHORIZED).json({
-                message: '로그인 토큰이 만료되었습니다. 다시 로그인하세요.',
-            });
-        }
-
-        if (authorization instanceof jwt.JsonWebTokenError) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
-                message: '잘못된 토큰입니다.',
-            });
-        }
+        checkAuthorization(req, res);
 
         const result = await orderModel.getOrderDetail(id);
         if (result) {

@@ -1,7 +1,7 @@
 const pool = require('../mariadb');
 
 /** (카테고리별, 신간 여부별) 전체 도서 조회 */
-const getBooks = async ({ categoryId, news, limit, offset, currentPage }) => {
+const getBooks = async ({ categoryId, newBook, limit, offset, currentPage }) => {
   const connection = await pool.getConnection();
 
   let findBooksSql = `SELECT SQL_CALC_FOUND_ROWS *,
@@ -9,13 +9,10 @@ const getBooks = async ({ categoryId, news, limit, offset, currentPage }) => {
               FROM books`;
 
   if (categoryId) {
-    findBooksSql += ` WHERE category_id = :categoryId`;
+    findBooksSql += ' WHERE category_id = :categoryId';
   }
-
-  if (news) {
-    categoryId ? (findBooksSql += ' AND') : (findBooksSql += ' WHERE');
-
-    findBooksSql += ' pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
+  if (newBook) {
+    findBooksSql += ' WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
   }
 
   findBooksSql += ' LIMIT :limit OFFSET :offset';
@@ -37,27 +34,27 @@ const getBooks = async ({ categoryId, news, limit, offset, currentPage }) => {
 };
 
 /** 개별 도서 조회 */
-const getBookById = async ({ bookId, authorization }) => {
+const getBookById = async ({ bookId, userId }) => {
   const connection = await pool.getConnection();
 
-  let selectBookDetailSql = `SELECT *,
+  let sql = `SELECT *,
             (SELECT count(*) FROM likes WHERE books.id = liked_book_id) AS likes`;
 
-  if (authorization != null) {
+  if (userId) {
     // 로그인 상태이면 liked 추가
-    selectBookDetailSql += `,
+    sql += `,
             (SELECT EXISTS (SELECT * FROM likes WHERE user_id = :userId AND liked_book_id = :likedBookId)) AS liked`;
   }
 
-  selectBookDetailSql += `
+  sql += `
             FROM books
             LEFT JOIN category
             ON books.category_id = category.category_id
             WHERE books.id = :bookId`;
 
-  const values = { userId: authorization?.id, likedBookId: bookId, bookId };
+  const values = { userId, likedBookId: bookId, bookId };
 
-  const [results] = await connection.query(selectBookDetailSql, values);
+  const [results] = await connection.query(sql, values);
 
   if (results[0]) {
     return results[0];

@@ -79,9 +79,8 @@ const placeOrder = async (items, delivery, totalQuantity, totalPrice, userId, fi
   return results;
 };
 
-const getOrderList = async (authorization) => {
+const getOrderList = async (userId) => {
   const connection = await pool.getConnection();
-  const userId = authorization.id;
 
   const selectOrderListSql = `SELECT orders.id, created_at, address, receiver, contact, book_title, total_quantity, total_price 
       FROM orders LEFT JOIN delivery 

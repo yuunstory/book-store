@@ -5,19 +5,23 @@ const checkAuthorization = (necessaryLogin = true) => {
   return async (req, res, next) => {
     try {
       const receivedJwt = req.headers['authorization'];
-      console.log(`receivedJwt : ${receivedJwt}`);
+      // console.log(`receivedJwt : ${receivedJwt}`);
 
       if (!receivedJwt) {
-        console.log('실행');
+        // console.log('실행');
+        // console.log('necessaryLogin :', necessaryLogin);
         if (necessaryLogin) {
           return res.status(StatusCodes.UNAUTHORIZED).json({ message: '로그인이 필요합니다.' });
+        } else {
+          return next();
         }
-        return next();
       }
 
       const decodedJWT = jwt.verify(receivedJwt, process.env.PRIVATE_KEY);
 
+      // console.log('decodedJWT :', decodedJWT);
       req.user = decodedJWT;
+
       next();
     } catch (err) {
       if (err instanceof jwt.TokenExpiredError) {

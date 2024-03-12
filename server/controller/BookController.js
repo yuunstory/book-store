@@ -23,12 +23,9 @@ const getAllBooks = async (req, res) => {
 const getIndividualBook = async (req, res) => {
   try {
     const bookId = req.params.id;
+    const userId = req.user?.id;
 
-    // 로그인 여부 확인 이유는 도서를 좋아요했는지를 표시하기 위해서이다
-    const necessaryLogin = false;
-    const authorization = checkAuthorization({ req, res, necessaryLogin });
-
-    const book = await bookModel.getBookById({ bookId, authorization });
+    const book = await bookModel.getBookById({ bookId, userId });
 
     if (book) {
       return res.status(StatusCodes.OK).json(book);
@@ -36,7 +33,7 @@ const getIndividualBook = async (req, res) => {
       return res.status(StatusCodes.NOT_FOUND).send('존재하지 않는 도서');
     }
   } catch (err) {
-    console.error(err);
+    console.log(err);
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       message: '서버 오류 발생',
     });
